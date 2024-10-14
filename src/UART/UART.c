@@ -1,3 +1,4 @@
+#include "sd.h"
 #include "main.h"
 #include "DAC.h"
 #include "LCD.h"
@@ -18,6 +19,9 @@ typedef enum {
 	Lectura_Tecla,
 	Variacion_DAC,
 	Variacion_Baudrate,
+	New_File,
+	Add_Txt,
+	Del_File,
 	Verificacion_soltar
 } Estado;
 
@@ -26,6 +30,10 @@ Estado ESTs = Inicio;
 volatile uint8_t IndexRX = 0;
 volatile uint8_t PendingMessage = 0;
 uint8_t bandera = 0;
+char strAux[100];
+char strAux2[100];
+uint8_t *MessageUART;
+uint8_t bandera_1 = 0;
 
 
 
@@ -92,7 +100,7 @@ void UART4_IRQHandler(General *Gen) {
 	}
 }
 
-void usart2SendData(uint8_t *Buff, uint8_t Length){
+void usart2SendData(uint16_t *Buff, uint8_t Length){
 	uint8_t i;
 	for(i = 0; i < Length; i++){
 		USART_SendData(UART4, (uint8_t) Buff[i]);
@@ -127,7 +135,7 @@ void Init_MenuUART(General *Gen) {
 	switch (ESTs) {
 
 	case Inicio:											// Estado inicial, presentacion del menu
-		usart2SendData((uint8_t *)" \r\nPara acceder al Menu presione ENTER.\r\n", 41);
+		usart2SendData((uint16_t *)" \r\nPara acceder al Menu presione ENTER.\r\n", 41);
 		ESTs = Verifico;
 		break;
 
@@ -141,11 +149,14 @@ void Init_MenuUART(General *Gen) {
 		break;
 
 	case Menu_UART:											// Mostrando el menú principal
-		usart2SendData((uint8_t *)
+		usart2SendData((uint16_t *)
 				"Menu Principal:\r\n"
 				"1) Leer Tecla Presionada\r\n"
 				"2) Generador DAC\r\n"
-				"3) Modificacion de Baudrate\r\n", 92);
+				"3) Modificacion de Baudrate\r\n"
+				"4) Log de Texto\r\n"
+				"5) Agregar Datos\r\n"
+				"6) Borrar Archivo\r\n", 100);
 		ESTs = Lectura_Menu;
 		break;
 
@@ -156,20 +167,20 @@ void Init_MenuUART(General *Gen) {
 			if (Gen->Mensaje[1] == '\r') {  				// Verificar que la opción está bien ingresada
 				switch (bandera) {
 				case 1:
-					usart2SendData((uint8_t *)"\nPresione una tecla:\r\n", 25);
+					usart2SendData((uint16_t *)"\nPresione una tecla:\r\n", 25);
 					ESTs = Lectura_Tecla;
 					break;
 				case 2:
-					usart2SendData((uint8_t *)"\nIngrese un valor en mV (0 a 3300):\r\n", 40);
+					usart2SendData((uint16_t *)"\nIngrese un valor en mV (0 a 3300):\r\n", 40);
 					ESTs = Variacion_DAC;
 					break;
 				case 3:
 					sprintf(Gen->RX_Buffer, "\nValor actual de baudrate: %d \r\nIngrese nuevo baudrate:\r\n", Gen->Baudrate);
-					usart2SendData((uint8_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
+					usart2SendData((uint16_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
 					ESTs = Variacion_Baudrate;
 					break;
 				default:
-					usart2SendData((uint8_t *)"Opcion no valida \r\n\n", 22);
+					usart2SendData((uint16_t *)"Opcion no valida \r\n\n", 22);
 					ESTs = Menu_UART;
 					break;
 				}
@@ -180,7 +191,7 @@ void Init_MenuUART(General *Gen) {
 	case Lectura_Tecla:												// Estado para leer una tecla presionada
 		if (Gen->Key != '\0' && Gen->Mensaje[0] != '\r') {
 			sprintf(Gen->RX_Buffer, "Tecla presionada: %c\r\n", Gen->Key);
-			usart2SendData((uint8_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
+			usart2SendData((uint16_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
 			ESTs = Verificacion_soltar;
 		}
 		if (PendingMessage) {
@@ -201,10 +212,10 @@ void Init_MenuUART(General *Gen) {
 					uint16_t dacRegisterValue = (dacValue * 4095) / 3300;
 					DAC_SetChannel1Data(DAC_Align_12b_R, dacRegisterValue);
 					sprintf(printDAC, "\nDAC cambiado a: %d \r\n\n", dacValue);
-					usart2SendData((uint8_t *)printDAC, strlen(printDAC));
+					usart2SendData((uint16_t *)printDAC, strlen(printDAC));
 					ESTs = Variacion_DAC;
 				}else if(dacValue > 3300 ) {
-					usart2SendData((uint8_t *)"Parametro no valido.\r\n\n", 24);
+					usart2SendData((uint16_t *)"Parametro no valido.\r\n\n", 24);
 					ESTs = Variacion_DAC;
 				}
 			}else if(Gen->Mensaje[0] == '\r'){
@@ -224,11 +235,11 @@ void Init_MenuUART(General *Gen) {
 				Gen->Baudrate = newBaudrate;
 				//UART4_Config(Gen);  													// Reconfigurar la UART con el nuevo baudrate
 				sprintf(Gen->RX_Buffer, "Baudrate cambiado a: %d \r\n\n", Gen->Baudrate);
-				usart2SendData((uint8_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
+				usart2SendData((uint16_t *)Gen->RX_Buffer, strlen(Gen->RX_Buffer));
 				UART4_Config(Gen);
 				ESTs = Menu_UART;
 			} else {
-				usart2SendData((uint8_t *)"Parametro no valido.\r\n\n", 24);
+				usart2SendData((uint16_t *)"Parametro no valido.\r\n\n", 24);
 				ESTs = Menu_UART;
 			}
 
@@ -242,5 +253,58 @@ void Init_MenuUART(General *Gen) {
 		if(Gen->Key == '\0'){
 			ESTs = Lectura_Tecla;
 		}
+		break;
+
+	case New_File:
+		if (PendingMessage) {
+			usart2SendData((uint16_t *)"\r\n4- Log de Texto\r\n", 20);
+			usart2SendData((uint16_t *)"\r\nNombre de archivo: ", 20);
+
+			if (Gen->Mensaje[0] == '\r') {
+
+				readMessage(Gen);
+				ESTs = Inicio;
+				break;
+			}
+
+			if (PendingMessage) {
+
+				if (!bandera_1) {
+
+					sprintf(strAux, "%s", MessageUART);
+					usart2SendData((uint16_t *)strAux,40);
+
+					usart2SendData((uint16_t *)"\r\nIngrese Datos: ", 40);
+
+					bandera_1++;
+
+				} else {
+
+					sprintf(Gen->FileTxt, "%s", MessageUART);
+					usart2SendData((uint16_t *)Gen->FileTxt, 40);
+
+					AddTxt("Cuenta", "12345667890");
+
+					usart2SendData((uint16_t *)"\r\nPresione Enter para salir.",40);
+				}
+
+			}
+
+			readMessage(Gen);
+		}
+		break;
+
+	case Add_Txt:
+		if (PendingMessage) {
+			usart2SendData((uint16_t *)"-------------------------------------",40);
+			usart2SendData((uint16_t *)"\r\n4- Agregar texto:\r\n",40);
+
+
+		}
+
+		break;
+	case Del_File:
+
+		break;
 	}
 }

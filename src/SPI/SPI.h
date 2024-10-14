@@ -32,9 +32,9 @@
 #define uSD_SPI_MOSI_SOURCE             GPIO_PinSource12
 #define uSD_SPI_MOSI_AF                 GPIO_AF_SPI3
 
-#define uSD_CS_PIN                    	GPIO_Pin_2
-#define uSD_CS_GPIO_PORT              	GPIOD
-#define uSD_CS_GPIO_CLK               	RCC_AHB1Periph_GPIOD
+#define uSD_CS_PIN                    	GPIO_Pin_13
+#define uSD_CS_GPIO_PORT              	GPIOC
+#define uSD_CS_GPIO_CLK               	RCC_AHB1Periph_GPIOC
 
 
 #define uSD_CS_LOW()      		 		GPIO_ResetBits(uSD_CS_GPIO_PORT, uSD_CS_PIN)

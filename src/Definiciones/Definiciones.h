@@ -20,10 +20,7 @@ typedef	struct {
 	char Mensaje[BufferDimension];
 	int Baudrate;
 
-	//uint8_t PendingMessage;
-	//uint16_t TimeReloadDisplay;
-	//uint8_t ButtonUsed;
-	//uint8_t USARTMessage;
+	char FileTxt[20];
 
 } General;
 

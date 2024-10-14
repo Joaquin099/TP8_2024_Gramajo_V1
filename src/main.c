@@ -1,4 +1,5 @@
 /*-----------------------------------Includes-----------------------------------*/
+#include "sd.h"
 #include "LCD.h"
 #include "DAC.h"
 #include "ADC.h"
@@ -9,6 +10,9 @@
 #include "Teclado.h"
 #include "Display_LCD.h"
 #include "Definiciones.h"
+
+#include "SPI.h"
+#include "ff.h"
 
 /*-----------------------------------Functions----------------------------------*/
 void SysTick_Handler(void);
@@ -45,6 +49,8 @@ int main(void)
 	PWM_config();
 	EXTILine10_config();
 	UART4_Config(&Gen);
+	initSPI();
+	initSD();
 
 	while(1){
 		Init_MenuUART(&Gen);

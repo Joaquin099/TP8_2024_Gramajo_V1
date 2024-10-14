@@ -3,7 +3,7 @@
 #include "stm32f4xx.h"
 #include "stdbool.h"
 #include "stddef.h"
-#include "portSPI.h"
+#include "SPI.h"
 
 /* Private define -----------------------------------------------------------*/
 /* Definitions for MMC/SDC command */
